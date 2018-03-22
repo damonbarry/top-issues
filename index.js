@@ -4,6 +4,7 @@
 
 const request = require('request-promise-native');
 const parseLinks = require('parse-link-header');
+const parseUrl = require('url-parse');
 
 if (!process.env.GITHUB_TOKEN) {
   console.log('Please set your GitHub OAuth2 token to the environment variable GITHUB_TOKEN.');
@@ -33,8 +34,10 @@ function noCommentsSince(url, issueNumber, days) {
     });
 }
 
-function getIssues(url) {
-  if (!url) return Promise.resolve();
+function _getIssues(url) {
+  if (!url) {
+    return Promise.resolve();
+  }
 
   let options = {
     url: url,
@@ -49,7 +52,7 @@ function getIssues(url) {
   return request(options)
     .then((res) => {
       let links = parseLinks(res.headers.link);
-      return Promise.all([getIssues(links.next && links.next.url)].concat(
+      return Promise.all([_getIssues(links.next && links.next.url)].concat(
         res.body.map((issue) => {
           var print = () => console.log(`${issue.number}\t${issue.comments}\t${issue.title.substr(0, 60)}`);
           if (issue.labels.find((label) => label.name == 'enhancement')) {
@@ -74,9 +77,19 @@ function getIssues(url) {
     });
 }
 
-console.log(`Issue\tComments\Title`);
+function getIssues(url) {
+  url = parseUrl(url);
+  if (url.hostname.split('.').slice(-2).join('.') != 'github.com') {
+    console.log('Unrecognized URL, expected github.com');
+    return 1;
+  }
+  
+  console.log(`Issue\tComments\Title`);
+  
+  _getIssues(`https://api.github.com/repos${url.pathname.replace(/\.git$/, '')}/issues`)
+    .then(() => {
+      console.log('\nDone.');
+    });
+}
 
-getIssues('https://api.github.com/repos/Azure/iot-edge/issues')
-  .then(() => {
-    console.log('\nDone.');
-  });
+getIssues('https://github.com/Azure/iot-edge.git');
