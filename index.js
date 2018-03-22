@@ -2,7 +2,6 @@
 
 const request = require('request-promise-native');
 const parseLinks = require('parse-link-header');
-const urlTrim = require('url-trim');
 
 if (!process.env.GITHUB_TOKEN) {
   console.log("Please set your GitHub OAuth2 token to the environment variable GITHUB_TOKEN.");
@@ -12,7 +11,7 @@ if (!process.env.GITHUB_TOKEN) {
 function noCommentsSince(url, issueNumber, days) {
   let since = new Date();
   since.setDate(since.getDate() - days);
-  let commentsUrl = `${urlTrim(url)}/${issueNumber}/comments?since=${since.toISOString()}`;
+  let commentsUrl = `${url}?since=${since.toISOString()}`;
 
   let options = {
     url: commentsUrl,
@@ -60,7 +59,7 @@ function getIssues(url) {
             print();
             return Promise.resolve();
           }
-          return noCommentsSince(url, issue.number, 10)
+          return noCommentsSince(issue.comments_url, issue.number, 10)
             .then((noComments) => {
               // print issues no one has commented on in 10 days
               if (noComments) print();
