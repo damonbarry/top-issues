@@ -1,10 +1,12 @@
+/* jshint node: true */
 /* jshint esversion: 6 */
+'use strict';
 
 const request = require('request-promise-native');
 const parseLinks = require('parse-link-header');
 
 if (!process.env.GITHUB_TOKEN) {
-  console.log("Please set your GitHub OAuth2 token to the environment variable GITHUB_TOKEN.");
+  console.log('Please set your GitHub OAuth2 token to the environment variable GITHUB_TOKEN.');
   return 1;
 }
 
@@ -76,5 +78,5 @@ console.log(`Issue\tComments\Title`);
 
 getIssues('https://api.github.com/repos/Azure/iot-edge/issues')
   .then(() => {
-    console.log("\nDone.");
+    console.log('\nDone.');
   });
