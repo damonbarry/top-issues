@@ -4,6 +4,11 @@ const request = require('request-promise-native');
 const parseLinks = require('parse-link-header');
 const urlTrim = require('url-trim');
 
+if (!process.env.GITHUB_TOKEN) {
+  console.log("Please set your GitHub OAuth2 token to the environment variable GITHUB_TOKEN.");
+  return 1;
+}
+
 function noCommentsSince(url, issueNumber, days) {
   let since = new Date();
   since.setDate(since.getDate() - days);
