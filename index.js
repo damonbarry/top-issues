@@ -39,8 +39,11 @@ function _getIssues(url) {
     return Promise.resolve();
   }
 
+  url = parseUrl(url, true);
+  url.set('query', Object.assign({ per_page: 100 }, url.query));
+
   let options = {
-    url: url,
+    url: url.href,
     json: true,
     resolveWithFullResponse: true,
     headers: { 
@@ -52,7 +55,7 @@ function _getIssues(url) {
   return request(options)
     .then((res) => {
       let links = parseLinks(res.headers.link);
-      return Promise.all([_getIssues(links.next && links.next.url)].concat(
+      return Promise.all([_getIssues(links && links.next && links.next.url)].concat(
         res.body.map((issue) => {
           var print = () => console.log(`${issue.number}\t${issue.comments}\t${issue.title.substr(0, 60)}`);
           if (issue.labels.find((label) => label.name == 'enhancement')) {
