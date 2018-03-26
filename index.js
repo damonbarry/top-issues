@@ -8,16 +8,12 @@ const parseUrl = require('url-parse');
 
 if (!process.env.GITHUB_TOKEN) {
   console.log('Please set your GitHub OAuth2 token to the environment variable GITHUB_TOKEN.');
-  return -1;
+  return 1;
 }
 
-function noCommentsSince(url, issueNumber, days) {
-  let since = new Date();
-  since.setDate(since.getDate() - days);
-  let commentsUrl = `${url}?since=${since.toISOString()}`;
-
+function staleComment(issueCommentsUrl, olderThanDays) {
   let options = {
-    url: commentsUrl,
+    url: `${issueCommentsUrl}?per_page=1`,
     json: true,
     headers: {
       'User-Agent': 'request',
@@ -26,12 +22,20 @@ function noCommentsSince(url, issueNumber, days) {
   };
 
   return request(options)
-    .then((body) => !body.length)
-    .catch((err) => console.log(err.message));
+    .then(body => {
+      if (!body.length) return null;
+
+      let comment = body[0];
+      let staleDate = new Date();
+      staleDate.setDate(staleDate.getDate() - olderThanDays);
+      let commentDate = new Date(comment.created_at);
+      return commentDate < staleDate ? comment : null;
+    })
+    .catch(err => console.log(err.message));
 }
 
 function _getIssues(url, count) {
-  if (!url) return 0;
+  if (!url) return [];
 
   url = parseUrl(url, true);
   url.set('query', Object.assign({ per_page: 100 }, url.query));
@@ -47,33 +51,27 @@ function _getIssues(url, count) {
   };
 
   return request(options)
-    .then((res) => {
+    .then(res => {
       let links = parseLinks(res.headers.link);
-      return Promise.all([_getIssues(links && links.next && links.next.url)].concat(
-        res.body.map((issue) => {
-          var print = () => console.log(`${issue.number}\t${issue.comments}\t${issue.title.substr(0, 60)}`);
-          if (issue.labels.find((label) => label.name == 'enhancement')) {
+      return Promise.all(_getIssues(links && links.next && links.next.url).concat(
+        res.body.map(issue => {
+          if (issue.labels.find(label => label.name == 'enhancement')) {
             // ignore issues labeled 'enhancement'
-            return 0;
+            return null;
           }
+
           if (!issue.comments) {
-            // print issues that no one has commented on yet
-            print();
-            return 1;
+            // keep issues no one has commented on yet
+            return { issue: issue, comment: null };
           }
-          return noCommentsSince(issue.comments_url, issue.number, 10)
-            .then((noComments) => {
-              // print issues no one has commented on in 10 days
-              if (noComments) {
-                print();
-                return 1;
-              }
-              return 0;
-            });
+
+          // keep issues no one has commented on in 10+ days
+          return staleComment(issue.comments_url, 10)
+            .then(comment => comment ? { issue: issue, comment: comment } : null);
         })
-      )).then((arrCounts) => arrCounts.reduce((accum, val) => accum + val));
+      )).then(issues => issues.filter(issue => issue));
     })
-    .catch((err) => {
+    .catch(err => {
       console.log(err.message);
     });
 }
@@ -82,14 +80,25 @@ function getIssues(url) {
   url = parseUrl(url);
   if (url.hostname.split('.').slice(-2).join('.') != 'github.com') {
     console.log('Unrecognized URL, expected github.com');
-    return -1;
+    return 1;
   }
   
-  console.log(`Issue\tComments\Title`);
+  console.log(`Issue\tComments\tAge (days)\tTitle`);
   
-  _getIssues(`https://api.github.com/repos${url.pathname.replace(/\.git$/, '')}/issues`)
-    .then((count) => {
-      console.log(`\n${count} issues`);
+  let basename = url.pathname.replace(/\.git$/, '');
+  _getIssues(`https://api.github.com/repos${basename}/issues`)
+    .then(issues => {
+      issues.forEach(issue => {
+        let ONE_DAY = 1000 * 60 * 60 * 24;
+        let number = issue.issue.number;
+        let numComments = issue.issue.comments;
+        let title = issue.issue.title;
+        let age = !issue.comment ? "<none>"
+          : Math.round(Math.abs((new Date()).getTime() - (new Date(issue.comment.created_at)).getTime())/ONE_DAY);
+
+        console.log(`${number}\t${numComments}\t\t${age}\t\t${title.substr(0, 60)}`);
+      });
+      console.log(`\n${issues.length} issues`);
     });
 }
 
