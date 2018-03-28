@@ -1,5 +1,5 @@
-/* jshint node: true */
-/* jshint esversion: 6 */
+#!/usr/bin/env node
+
 'use strict';
 
 const request = require('request-promise-native');

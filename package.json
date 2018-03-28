@@ -1,5 +1,5 @@
 {
-  "name": "gh-issue-manager",
+  "name": "top-issues",
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
@@ -13,5 +13,8 @@
     "request": "^2.85.0",
     "request-promise-native": "^1.0.5",
     "url-parse": "^1.2.0"
+  },
+  "bin" : {
+    "top-issues": "./index.js"
   }
 }
