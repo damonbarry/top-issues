@@ -83,21 +83,30 @@ function getIssues(url) {
     return 1;
   }
   
-  console.log(`Issue\tComments\tAge (days)\tTitle`);
-  
   let basename = url.pathname.replace(/\.git$/, '');
   _getIssues(`https://api.github.com/repos${basename}/issues`)
     .then(issues => {
-      issues.forEach(issue => {
-        let ONE_DAY = 1000 * 60 * 60 * 24;
-        let number = issue.issue.number;
-        let numComments = issue.issue.comments;
-        let title = issue.issue.title;
-        let age = !issue.comment ? "<none>"
-          : Math.round(Math.abs((new Date()).getTime() - (new Date(issue.comment.created_at)).getTime())/ONE_DAY);
+      let ONE_DAY = 1000 * 60 * 60 * 24;
 
-        console.log(`${number}\t${numComments}\t\t${age}\t\t${title.substr(0, 60)}`);
+      let list = issues.map(elem => {
+        return {
+          number: elem.issue.number,
+          numComments: elem.issue.comments,
+          age: !elem.comment ? -1 : Math.round(Math.abs((new Date()).getTime() - (new Date(elem.comment.created_at)).getTime())/ONE_DAY),
+          title: elem.issue.title
+        };
       });
+
+      list.sort((a, b) => {
+        if (a.age < 0 && b.age < 0) // if no comments, order by issue #, ascending
+          return a.number - b.number;
+        if (a.age < 0) return -1;   // order issues without comments...
+        if (b.age < 0) return +1;   // ...before issues with comments
+        return b.age - a.age;       // if both have comments, order by comment age, descending
+      });
+
+      console.log(`Issue\tComments\tAge (days)\tTitle`);
+      list.forEach(issue => console.log(`${issue.number}\t${issue.numComments}\t\t${issue.age===-1 ? "--" : issue.age}\t\t${issue.title.substr(0, 60)}`));
       console.log(`\n${issues.length} issues`);
     });
 }
