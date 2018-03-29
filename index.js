@@ -5,19 +5,17 @@
 const request = require('request-promise-native');
 const parseLinks = require('parse-link-header');
 const parseUrl = require('url-parse');
+const write = require('fs-writefile-promise');
 
-if (!process.env.GITHUB_TOKEN) {
-  console.log('Please set your GitHub OAuth2 token to the environment variable GITHUB_TOKEN.');
-  return 1;
-}
-
+let pkg = require('./package.json');
+let oauth;
 function staleComment(issueCommentsUrl, olderThanDays) {
   let options = {
     url: `${issueCommentsUrl}?per_page=1`,
     json: true,
     headers: {
       'User-Agent': 'request',
-      'Authorization': `token ${process.env.GITHUB_TOKEN}`
+      'Authorization': `token ${oauth}`
     }
   };
 
@@ -46,7 +44,7 @@ function _getIssues(url, count) {
     resolveWithFullResponse: true,
     headers: { 
       'User-Agent': 'request',
-      'Authorization': `token ${process.env.GITHUB_TOKEN}`
+      'Authorization': `token ${oauth}`
     }
   };
 
@@ -111,4 +109,36 @@ function getIssues(url) {
     });
 }
 
-getIssues('https://github.com/Azure/iot-edge.git');
+function processOAuth() {
+  if (process.argv[2] === 'oauth') {
+    if (!process.argv[3]) {
+      return Promise.reject('Error: \'oauth\' is missing value');
+    }
+  
+    pkg.config = { oauth: process.argv[3] };
+    return write('./package.json', JSON.stringify(pkg, null, 2))
+      .then(() => {
+        console.log('Saved GitHub OAuth2 token');
+        return true;
+      });
+  }
+  else return Promise.resolve(false);
+}
+
+processOAuth()
+  .then(given => {
+    if (given) return 0;
+
+    oauth = (pkg.config && pkg.config.oauth) || process.env.GITHUB_TOKEN;
+
+    if (!oauth) {
+      console.log(`Error: no GitHub OAuth2 token found.\nRun '${pkg.name} oauth <token>' or set environment variable GITHUB_TOKEN.`);
+      return 1;
+    }
+
+    getIssues('https://github.com/Azure/iot-edge.git');
+  })
+  .catch(err => {
+    console.log(err);
+    return 1;
+  });
