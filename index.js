@@ -5,10 +5,12 @@
 const request = require('request-promise-native');
 const parseLinks = require('parse-link-header');
 const parseUrl = require('url-parse');
+const path = require('path');
 const write = require('fs-writefile-promise');
 
 let pkg = require('./package.json');
 let oauth;
+
 function staleComment(issueCommentsUrl, olderThanDays) {
   let options = {
     url: `${issueCommentsUrl}?per_page=1`,
@@ -115,8 +117,9 @@ function processOAuth() {
       return Promise.reject('Error: \'oauth\' is missing value');
     }
   
+    const pkgPath = `${path.dirname(process.argv[1])}/package.json`;
     pkg.config = { oauth: process.argv[3] };
-    return write('./package.json', JSON.stringify(pkg, null, 2))
+    return write(pkgPath, JSON.stringify(pkg, null, 2))
       .then(() => {
         console.log('Saved GitHub OAuth2 token');
         return true;
