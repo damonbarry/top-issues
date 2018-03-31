@@ -2,10 +2,11 @@
 
 'use strict';
 
-const request = require('request-promise-native');
 const parseLinks = require('parse-link-header');
 const parseUrl = require('url-parse');
 const path = require('path');
+const program = require('caporal');
+const request = require('request-promise-native');
 const write = require('fs-writefile-promise');
 
 let pkg = require('./package.json');
@@ -34,7 +35,7 @@ function staleComment(issueCommentsUrl, olderThanDays) {
     .catch(err => console.log(err.message));
 }
 
-function _getIssues(url, count) {
+function _getIssues(url) {
   if (!url) return [];
 
   url = parseUrl(url, true);
@@ -111,37 +112,25 @@ function getIssues(url) {
     });
 }
 
-function processOAuth() {
-  if (process.argv[2] === 'oauth') {
-    if (!process.argv[3]) {
-      return Promise.reject('Error: \'oauth\' is missing value');
-    }
-  
+program
+  .command('oauth', 'Save a token used to communicate with GitHub')
+  .argument('<token>', 'GitHub personal access token')
+  .action((args, opts, logger) => {
     const pkgPath = `${path.dirname(process.argv[1])}/package.json`;
     pkg.config = { oauth: process.argv[3] };
     return write(pkgPath, JSON.stringify(pkg, null, 2))
-      .then(() => {
-        console.log('Saved GitHub OAuth2 token');
-        return true;
-      });
-  }
-  else return Promise.resolve(false);
-}
+      .then(() => logger.info('Saved GitHub OAuth2 token'));
+  });
 
-processOAuth()
-  .then(given => {
-    if (given) return 0;
-
+program
+  .action((args, opts, logger) => {
     oauth = (pkg.config && pkg.config.oauth) || process.env.GITHUB_TOKEN;
-
     if (!oauth) {
-      console.log(`Error: no GitHub OAuth2 token found.\nRun '${pkg.name} oauth <token>' or set environment variable GITHUB_TOKEN.`);
+      logger.error(`Error: no GitHub OAuth2 token found.\nRun '${pkg.name} oauth <token>' or set environment variable GITHUB_TOKEN.`);
       return 1;
     }
 
     getIssues('https://github.com/Azure/iot-edge.git');
-  })
-  .catch(err => {
-    console.log(err);
-    return 1;
   });
+
+program.parse(process.argv);
