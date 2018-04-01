@@ -33,8 +33,7 @@ function staleComment(issueCommentsUrl, olderThanDays) {
       staleDate.setDate(staleDate.getDate() - olderThanDays);
       let commentDate = new Date(comment.created_at);
       return commentDate < staleDate ? comment : null;
-    })
-    .catch(err => console.log(err.message));
+    });
 }
 
 function _getIssues(url) {
@@ -74,20 +73,16 @@ function _getIssues(url) {
         })
       )).then(issues => issues.filter(issue => issue));
     })
-    .catch(err => {
-      console.log(err.message);
-    });
 }
 
 function getIssues(url) {
   url = parseUrl(url);
   if (url.hostname.split('.').slice(-2).join('.') != 'github.com') {
-    console.log('Unrecognized URL, expected github.com');
-    return 1;
+    return Promise.reject('Unrecognized URL, expected github.com');
   }
   
   let basename = url.pathname.replace(/\.git$/, '');
-  _getIssues(`https://api.github.com/repos${basename}/issues`)
+  return _getIssues(`https://api.github.com/repos${basename}/issues`)
     .then(issues => {
       let ONE_DAY = 1000 * 60 * 60 * 24;
 
@@ -144,8 +139,9 @@ program
       return 1;
     }
 
-    const url = pkg.url || 'https://github.com/Azure/iot-edge.git';
-    getIssues(url);
+    const url = pkg.config.url || 'https://github.com/Azure/iot-edge.git';
+    return getIssues(url)
+      .catch(err => logger.error(err));
   });
 
 program.parse(process.argv);
