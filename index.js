@@ -9,7 +9,9 @@ const program = require('caporal');
 const request = require('request-promise-native');
 const write = require('fs-writefile-promise');
 
+const pkgPath = require.resolve('./package.json');
 let pkg = require('./package.json');
+
 let oauth;
 
 function staleComment(issueCommentsUrl, olderThanDays) {
@@ -116,7 +118,6 @@ program
   .command('oauth', 'Save a token used to communicate with GitHub')
   .argument('<token>', 'GitHub personal access token')
   .action((args, opts, logger) => {
-    const pkgPath = `${path.dirname(process.argv[1])}/package.json`;
     var cfg = pkg.config || {};
     cfg.oauth = args.token;
     pkg.config = cfg;
@@ -128,7 +129,6 @@ program
   .command('url', 'Save the GitHub issues URL')
   .argument('<url>', 'GitHub issues URL')
   .action((args, opts, logger) => {
-    const pkgPath = `${path.dirname(process.argv[1])}/package.json`;
     var cfg = pkg.config || {};
     cfg.url = args.url;
     pkg.config = cfg;
