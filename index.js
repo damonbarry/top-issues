@@ -117,9 +117,23 @@ program
   .argument('<token>', 'GitHub personal access token')
   .action((args, opts, logger) => {
     const pkgPath = `${path.dirname(process.argv[1])}/package.json`;
-    pkg.config = { oauth: process.argv[3] };
+    var cfg = pkg.config || {};
+    cfg.oauth = args.token;
+    pkg.config = cfg;
     return write(pkgPath, JSON.stringify(pkg, null, 2))
       .then(() => logger.info('Saved GitHub OAuth2 token'));
+  });
+
+program
+  .command('url', 'Save the GitHub issues URL')
+  .argument('<url>', 'GitHub issues URL')
+  .action((args, opts, logger) => {
+    const pkgPath = `${path.dirname(process.argv[1])}/package.json`;
+    var cfg = pkg.config || {};
+    cfg.url = args.url;
+    pkg.config = cfg;
+    return write(pkgPath, JSON.stringify(pkg, null, 2))
+      .then(() => logger.info(`Saved URL '${cfg.url}'`));
   });
 
 program
@@ -130,7 +144,8 @@ program
       return 1;
     }
 
-    getIssues('https://github.com/Azure/iot-edge.git');
+    const url = pkg.url || 'https://github.com/Azure/iot-edge.git';
+    getIssues(url);
   });
 
 program.parse(process.argv);
