@@ -130,7 +130,7 @@ program
 
 program
   .action((args, opts, logger) => {
-    oauth = pkg.config.oauth || process.env.GITHUB_TOKEN;
+    oauth = process.env.GITHUB_TOKEN || pkg.config.oauth;
     if (!oauth) {
       logger.error(`Error: no GitHub OAuth2 token found.\nRun '${pkg.name} oauth <token>' or set environment variable GITHUB_TOKEN.`);
       return 1;
