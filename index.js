@@ -11,6 +11,7 @@ const write = require('fs-writefile-promise');
 
 const pkgPath = require.resolve('./package.json');
 let pkg = require('./package.json');
+pkg.config = pkg.config || {};
 
 let oauth;
 
@@ -113,9 +114,7 @@ program
   .command('oauth', 'Save a token used to communicate with GitHub')
   .argument('<token>', 'GitHub personal access token')
   .action((args, opts, logger) => {
-    var cfg = pkg.config || {};
-    cfg.oauth = args.token;
-    pkg.config = cfg;
+    pkg.config.oauth = args.token;
     return write(pkgPath, JSON.stringify(pkg, null, 2))
       .then(() => logger.info('Saved GitHub OAuth2 token'));
   });
@@ -124,16 +123,14 @@ program
   .command('url', 'Save the GitHub issues URL')
   .argument('<url>', 'GitHub issues URL')
   .action((args, opts, logger) => {
-    var cfg = pkg.config || {};
-    cfg.url = args.url;
-    pkg.config = cfg;
+    pkg.config.url = args.url;
     return write(pkgPath, JSON.stringify(pkg, null, 2))
       .then(() => logger.info(`Saved URL '${cfg.url}'`));
   });
 
 program
   .action((args, opts, logger) => {
-    oauth = (pkg.config && pkg.config.oauth) || process.env.GITHUB_TOKEN;
+    oauth = pkg.config.oauth || process.env.GITHUB_TOKEN;
     if (!oauth) {
       logger.error(`Error: no GitHub OAuth2 token found.\nRun '${pkg.name} oauth <token>' or set environment variable GITHUB_TOKEN.`);
       return 1;
