@@ -12,7 +12,6 @@ const Table = require('cli-table2');
 
 const pkgPath = require.resolve('./package.json');
 let pkg = require('./package.json');
-pkg.config = pkg.config || {};
 
 function options(url, oauth) {
   return {
@@ -110,7 +109,7 @@ program
   .command('oauth', 'Save a token used to communicate with GitHub')
   .argument('<token>', 'GitHub personal access token')
   .action((args, opts, logger) => {
-    pkg.config.oauth = args.token;
+    pkg.config.oauth = args.token || null;
     return write(pkgPath, JSON.stringify(pkg, null, 2))
       .then(() => logger.info('Saved GitHub OAuth2 token'));
   });
@@ -119,7 +118,7 @@ program
   .command('url', 'Save the GitHub issues URL')
   .argument('<url>', 'GitHub issues URL')
   .action((args, opts, logger) => {
-    pkg.config.url = args.url;
+    pkg.config.url = args.url || null;
     return write(pkgPath, JSON.stringify(pkg, null, 2))
       .then(() => logger.info(`Saved URL '${pkg.config.url}'`));
   });
@@ -132,7 +131,7 @@ program
       return 1;
     }
 
-    const url = process.env.GITHUB_URL || pkg.config.url || 'https://github.com/Azure/iot-edge.git';
+    const url = process.env.GITHUB_URL || pkg.config.url || pkg.config.defaults.url;
     return getIssues(url, oauth, logger)
       .then(issues => {
         const table = new Table({
@@ -143,6 +142,7 @@ program
         issues.forEach(issue =>
           table.push([ issue.number, issue.numComments, issue.age === -1 ? '--' : `${issue.age}`, issue.title ]));
 
+        console.log(`\n${url}\n`);
         console.log(table.toString());
         console.log(`\n${issues.length} issues`);
       })

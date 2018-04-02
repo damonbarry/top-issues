@@ -18,5 +18,10 @@
   },
   "bin": {
     "top-issues": "./index.js"
+  },
+  "config": {
+    "defaults": {
+      "url": "https://github.com/Azure/iot-edge.git"
+    }
   }
 }
