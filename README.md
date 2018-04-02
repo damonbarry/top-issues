@@ -8,7 +8,7 @@ Issues with no comments are at the top of the list, followed by issues with no r
 ## Install
 
 ```
-$ sudo npm install -g damonbarry/top-issues
+$ npm install -g damonbarry/top-issues
 ```
 
 ## Configure
