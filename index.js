@@ -8,6 +8,7 @@ const path = require('path');
 const program = require('caporal');
 const request = require('request-promise-native');
 const write = require('fs-writefile-promise');
+const Table = require('cli-table2');
 
 const pkgPath = require.resolve('./package.json');
 let pkg = require('./package.json');
@@ -85,18 +86,18 @@ function getIssues(url) {
   let basename = url.pathname.replace(/\.git$/, '');
   return _getIssues(`https://api.github.com/repos${basename}/issues`)
     .then(issues => {
-      let ONE_DAY = 1000 * 60 * 60 * 24;
+      const oneDay = 1000 * 60 * 60 * 24;
 
-      let list = issues.map(elem => {
+      let processed = issues.map(elem => {
         return {
           number: elem.issue.number,
           numComments: elem.issue.comments,
-          age: !elem.comment ? -1 : Math.round(Math.abs((new Date()).getTime() - (new Date(elem.comment.created_at)).getTime())/ONE_DAY),
+          age: !elem.comment ? -1 : Math.round(Math.abs((new Date()).getTime() - (new Date(elem.comment.created_at)).getTime())/oneDay),
           title: elem.issue.title
         };
       });
 
-      list.sort((a, b) => {
+      processed.sort((a, b) => {
         if (a.age < 0 && b.age < 0) // if no comments, order by issue #, ascending
           return a.number - b.number;
         if (a.age < 0) return -1;   // order issues without comments...
@@ -104,9 +105,7 @@ function getIssues(url) {
         return b.age - a.age;       // if both have comments, order by comment age, descending
       });
 
-      console.log(`Issue\tComments\tAge (days)\tTitle`);
-      list.forEach(issue => console.log(`${issue.number}\t${issue.numComments}\t\t${issue.age===-1 ? "--" : issue.age}\t\t${issue.title.substr(0, 60)}`));
-      console.log(`\n${issues.length} issues`);
+      return processed;
     });
 }
 
@@ -138,6 +137,18 @@ program
 
     const url = pkg.config.url || 'https://github.com/Azure/iot-edge.git';
     return getIssues(url)
+      .then(issues => {
+        const table = new Table({
+          head: ['Issue', 'Comments', 'Age (days)', 'Title'],
+          colWidths: [,,,60]
+        });
+      
+        issues.forEach(issue =>
+          table.push([ issue.number, issue.numComments, issue.age === -1 ? '--' : `${issue.age}`, issue.title ]));
+
+        console.log(table.toString());
+        console.log(`\n${issues.length} issues`);
+      })
       .catch(err => logger.error(err));
   });
 
