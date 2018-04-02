@@ -124,7 +124,7 @@ program
   .action((args, opts, logger) => {
     pkg.config.url = args.url;
     return write(pkgPath, JSON.stringify(pkg, null, 2))
-      .then(() => logger.info(`Saved URL '${cfg.url}'`));
+      .then(() => logger.info(`Saved URL '${pkg.config.url}'`));
   });
 
 program
@@ -135,7 +135,7 @@ program
       return 1;
     }
 
-    const url = pkg.config.url || 'https://github.com/Azure/iot-edge.git';
+    const url = process.env.GITHUB_URL || pkg.config.url || 'https://github.com/Azure/iot-edge.git';
     return getIssues(url)
       .then(issues => {
         const table = new Table({

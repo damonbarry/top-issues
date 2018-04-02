@@ -13,15 +13,21 @@ $ sudo npm install -g damonbarry/top-issues
 
 ## Configure
 
+Give the tool a GitHub OAuth2 token to use like this:
+
 ```
 $ top-issues oauth <github personal access token>
 ```
 
-By default, `top-issues` queries the [iot-edge](https://github.com/Azure/iot-edge.git) repo (because that's the repo I monitor). You can override the URL like this:
+You can override any configured token by setting `GITHUB_TOKEN` in your environment.
+
+By default, `top-issues` queries the [iot-edge](https://github.com/Azure/iot-edge.git) repo (because that's the repo I monitor). You can configure the tool to use another URL like this:
 
 ```
 $ top-issues url <github repository URL>
 ```
+
+You can override any configured URL by setting `GITHUB_URL` in your environment.
 
 ## Run
 
