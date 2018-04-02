@@ -20,6 +20,7 @@ function staleComment(issueCommentsUrl, olderThanDays, logger) {
   let options = {
     url: `${issueCommentsUrl}?per_page=1`,
     json: true,
+    resolveWithFullResponse: true,
     headers: {
       'User-Agent': 'request',
       'Authorization': `token ${oauth}`
@@ -29,10 +30,10 @@ function staleComment(issueCommentsUrl, olderThanDays, logger) {
   logger.debug(`Requesting '${options.url}'`);
 
   return request(options)
-    .then(body => {
-      if (!body.length) return null;
+    .then(res => {
+      if (!res.body.length) return null;
 
-      let comment = body[0];
+      let comment = res.body[0];
       let staleDate = new Date();
       staleDate.setDate(staleDate.getDate() - olderThanDays);
       let commentDate = new Date(comment.created_at);
