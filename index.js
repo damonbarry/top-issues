@@ -14,9 +14,7 @@ const pkgPath = require.resolve('./package.json');
 let pkg = require('./package.json');
 pkg.config = pkg.config || {};
 
-let oauth;
-
-function options(url) {
+function options(url, oauth) {
   return {
     url: url,
     json: true,
@@ -28,8 +26,8 @@ function options(url) {
   };
 }
 
-function staleComment(issueCommentsUrl, olderThanDays, logger) {
-  let opts = options(`${issueCommentsUrl}?per_page=1`);
+function staleComment(issueCommentsUrl, olderThanDays, oauth, logger) {
+  let opts = options(`${issueCommentsUrl}?per_page=1`, oauth);
   logger.debug(`Requesting '${opts.url}'`);
 
   return request(opts)
@@ -44,19 +42,19 @@ function staleComment(issueCommentsUrl, olderThanDays, logger) {
     });
 }
 
-function _getIssues(url, logger) {
+function _getIssues(url, oauth, logger) {
   if (!url) return [];
 
   url = parseUrl(url, true);
   url.set('query', Object.assign({ per_page: 100 }, url.query));
 
-  let opts = options(url.href);
+  let opts = options(url.href, oauth);
   logger.debug(`Requesting '${opts.url}'`);
 
   return request(opts)
     .then(res => {
       let links = parseLinks(res.headers.link);
-      return Promise.all(_getIssues(links && links.next && links.next.url, logger).concat(
+      return Promise.all(_getIssues(links && links.next && links.next.url, oauth, logger).concat(
         res.body.map(issue => {
           if (issue.labels.find(label => label.name == 'enhancement')) {
             // ignore issues labeled 'enhancement'
@@ -69,21 +67,21 @@ function _getIssues(url, logger) {
           }
 
           // keep issues no one has commented on in 10+ days
-          return staleComment(issue.comments_url, 10, logger)
+          return staleComment(issue.comments_url, 10, oauth, logger)
             .then(comment => comment ? { issue: issue, comment: comment } : null);
         })
       )).then(issues => issues.filter(issue => issue));
     })
 }
 
-function getIssues(url, logger) {
+function getIssues(url, oauth, logger) {
   url = parseUrl(url);
   if (url.hostname.split('.').slice(-2).join('.') != 'github.com') {
     return Promise.reject('Unrecognized URL, expected github.com');
   }
   
   let basename = url.pathname.replace(/\.git$/, '');
-  return _getIssues(`https://api.github.com/repos${basename}/issues`, logger)
+  return _getIssues(`https://api.github.com/repos${basename}/issues`, oauth, logger)
     .then(issues => {
       const oneDay = 1000 * 60 * 60 * 24;
 
@@ -128,14 +126,14 @@ program
 
 program
   .action((args, opts, logger) => {
-    oauth = process.env.GITHUB_TOKEN || pkg.config.oauth;
+    let oauth = process.env.GITHUB_TOKEN || pkg.config.oauth;
     if (!oauth) {
       logger.error(`Error: no GitHub OAuth2 token found.\nRun '${pkg.name} oauth <token>' or set environment variable GITHUB_TOKEN.`);
       return 1;
     }
 
     const url = process.env.GITHUB_URL || pkg.config.url || 'https://github.com/Azure/iot-edge.git';
-    return getIssues(url, logger)
+    return getIssues(url, oauth, logger)
       .then(issues => {
         const table = new Table({
           head: ['Issue', 'Comments', 'Age (days)', 'Title'],
