@@ -27,13 +27,22 @@ $ top-issues url <github repository URL>
 
 ```
 $ top-issues
-Issue   Comments        Age (days)      Title
-440     0               --              Precondition failed error on Pi
-445     0               --              Have config setting that always pulls from docker even if sa
-486     0               --              Add avoid message lost of nanomsg features by thread messagi
-520     0               --              [V1] MQTT segfault after "timed out waiting for CONNACK"
-223     6               343             LIBCMT linker warnings when building Release config
-237     5               334             "cmake --build . --target install" always install to /usr/lo
+┌───────┬──────────┬────────────┬────────────────────────────────────────────────────────────┐
+│ Issue │ Comments │ Age (days) │ Title                                                      │
+├───────┼──────────┼────────────┼────────────────────────────────────────────────────────────┤
+│ 440   │ 0        │ --         │ Precondition failed error on Pi                            │
+├───────┼──────────┼────────────┼────────────────────────────────────────────────────────────┤
+│ 445   │ 0        │ --         │ Have config setting that always pulls from docker even if… │
+├───────┼──────────┼────────────┼────────────────────────────────────────────────────────────┤
+│ 486   │ 0        │ --         │ Add avoid message lost of nanomsg features by thread mess… │
+├───────┼──────────┼────────────┼────────────────────────────────────────────────────────────┤
+│ 520   │ 0        │ --         │ [V1] MQTT segfault after "timed out waiting for CONNACK"   │
+├───────┼──────────┼────────────┼────────────────────────────────────────────────────────────┤
+│ 223   │ 6        │ 347        │ LIBCMT linker warnings when building Release config        │
+├───────┼──────────┼────────────┼────────────────────────────────────────────────────────────┤
+│ 237   │ 5        │ 338        │ "cmake --build . --target install" always install to /usr… │
+├───────┼──────────┼────────────┼────────────────────────────────────────────────────────────┤
 ...
-50 issues
+
+53 issues
 ```
