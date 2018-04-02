@@ -6,30 +6,18 @@ const parseLinks = require('parse-link-header');
 const parseUrl = require('url-parse');
 const path = require('path');
 const program = require('caporal');
-const request = require('request-promise-native');
+const request = require('./request.js');
 const write = require('fs-writefile-promise');
 const Table = require('cli-table2');
 
 const pkgPath = require.resolve('./package.json');
 let pkg = require('./package.json');
 
-function options(url, oauth) {
-  return {
-    url: url,
-    json: true,
-    resolveWithFullResponse: true,
-    headers: {
-      'User-Agent': pkg.name,
-      'Authorization': `token ${oauth}`
-    }
-  };
-}
-
 function staleComment(issueCommentsUrl, olderThanDays, oauth, logger) {
-  let opts = options(`${issueCommentsUrl}?per_page=1`, oauth);
-  logger.debug(`Requesting comments '${opts.url}'`);
+  const url = `${issueCommentsUrl}?per_page=1`;
+  logger.debug(`Requesting comments '${url}'`);
 
-  return request(opts)
+  return request(url, oauth)
     .then(res => {
       if (!res.body.length) return null;
 
@@ -47,10 +35,9 @@ function _getIssues(url, oauth, logger) {
   url = parseUrl(url, true);
   url.set('query', Object.assign({ per_page: 100 }, url.query));
 
-  let opts = options(url.href, oauth);
-  logger.debug(`Requesting issues '${opts.url}'`);
+  logger.debug(`Requesting issues '${url.href}'`);
 
-  return request(opts)
+  return request(url.href, oauth)
     .then(res => {
       let links = parseLinks(res.headers.link);
       return Promise.all(_getIssues(links && links.next && links.next.url, oauth, logger).concat(
@@ -76,7 +63,7 @@ function _getIssues(url, oauth, logger) {
 
 function getIssues(url, oauth, logger) {
   url = parseUrl(url);
-  if (url.hostname.split('.').slice(-2).join('.') != 'github.com') {
+  if (url.hostname.split('.').slice(-2).join('.') !== 'github.com') {
     return Promise.reject('Unrecognized URL, expected github.com');
   }
   
