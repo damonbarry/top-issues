@@ -16,20 +16,23 @@ pkg.config = pkg.config || {};
 
 let oauth;
 
-function staleComment(issueCommentsUrl, olderThanDays, logger) {
-  let options = {
-    url: `${issueCommentsUrl}?per_page=1`,
+function options(url) {
+  return {
+    url: url,
     json: true,
     resolveWithFullResponse: true,
     headers: {
-      'User-Agent': 'request',
+      'User-Agent': pkg.name,
       'Authorization': `token ${oauth}`
     }
   };
+}
 
-  logger.debug(`Requesting '${options.url}'`);
+function staleComment(issueCommentsUrl, olderThanDays, logger) {
+  let opts = options(`${issueCommentsUrl}?per_page=1`);
+  logger.debug(`Requesting '${opts.url}'`);
 
-  return request(options)
+  return request(opts)
     .then(res => {
       if (!res.body.length) return null;
 
@@ -47,19 +50,10 @@ function _getIssues(url, logger) {
   url = parseUrl(url, true);
   url.set('query', Object.assign({ per_page: 100 }, url.query));
 
-  let options = {
-    url: url.href,
-    json: true,
-    resolveWithFullResponse: true,
-    headers: { 
-      'User-Agent': 'request',
-      'Authorization': `token ${oauth}`
-    }
-  };
+  let opts = options(url.href);
+  logger.debug(`Requesting '${opts.url}'`);
 
-  logger.debug(`Requesting '${options.url}'`);
-
-  return request(options)
+  return request(opts)
     .then(res => {
       let links = parseLinks(res.headers.link);
       return Promise.all(_getIssues(links && links.next && links.next.url, logger).concat(
