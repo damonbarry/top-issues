@@ -16,7 +16,7 @@ pkg.config = pkg.config || {};
 
 let oauth;
 
-function staleComment(issueCommentsUrl, olderThanDays) {
+function staleComment(issueCommentsUrl, olderThanDays, logger) {
   let options = {
     url: `${issueCommentsUrl}?per_page=1`,
     json: true,
@@ -25,6 +25,8 @@ function staleComment(issueCommentsUrl, olderThanDays) {
       'Authorization': `token ${oauth}`
     }
   };
+
+  logger.debug(`Requesting '${options.url}'`);
 
   return request(options)
     .then(body => {
@@ -38,7 +40,7 @@ function staleComment(issueCommentsUrl, olderThanDays) {
     });
 }
 
-function _getIssues(url) {
+function _getIssues(url, logger) {
   if (!url) return [];
 
   url = parseUrl(url, true);
@@ -54,10 +56,12 @@ function _getIssues(url) {
     }
   };
 
+  logger.debug(`Requesting '${options.url}'`);
+
   return request(options)
     .then(res => {
       let links = parseLinks(res.headers.link);
-      return Promise.all(_getIssues(links && links.next && links.next.url).concat(
+      return Promise.all(_getIssues(links && links.next && links.next.url, logger).concat(
         res.body.map(issue => {
           if (issue.labels.find(label => label.name == 'enhancement')) {
             // ignore issues labeled 'enhancement'
@@ -70,21 +74,21 @@ function _getIssues(url) {
           }
 
           // keep issues no one has commented on in 10+ days
-          return staleComment(issue.comments_url, 10)
+          return staleComment(issue.comments_url, 10, logger)
             .then(comment => comment ? { issue: issue, comment: comment } : null);
         })
       )).then(issues => issues.filter(issue => issue));
     })
 }
 
-function getIssues(url) {
+function getIssues(url, logger) {
   url = parseUrl(url);
   if (url.hostname.split('.').slice(-2).join('.') != 'github.com') {
     return Promise.reject('Unrecognized URL, expected github.com');
   }
   
   let basename = url.pathname.replace(/\.git$/, '');
-  return _getIssues(`https://api.github.com/repos${basename}/issues`)
+  return _getIssues(`https://api.github.com/repos${basename}/issues`, logger)
     .then(issues => {
       const oneDay = 1000 * 60 * 60 * 24;
 
@@ -136,7 +140,7 @@ program
     }
 
     const url = process.env.GITHUB_URL || pkg.config.url || 'https://github.com/Azure/iot-edge.git';
-    return getIssues(url)
+    return getIssues(url, logger)
       .then(issues => {
         const table = new Table({
           head: ['Issue', 'Comments', 'Age (days)', 'Title'],
