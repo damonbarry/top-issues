@@ -13,6 +13,8 @@ $ npm install -g damonbarry/top-issues
 
 ## Configure
 
+### Authentication token
+
 Give the tool a GitHub OAuth2 token to use like this:
 
 ```
@@ -21,6 +23,8 @@ $ top-issues oauth <github personal access token>
 
 Note that your token will be saved as clear text in the `package.json` file where `top-issues` is installed. You can override the configured token by setting `GITHUB_TOKEN` in your environment.
 
+### Repository URL
+
 By default, `top-issues` queries the [iot-edge](https://github.com/Azure/iot-edge.git) repo (because that's the repo I monitor). You can configure the tool to use another URL like this:
 
 ```
@@ -28,6 +32,14 @@ $ top-issues url <github repository URL>
 ```
 
 You can override any configured URL by setting `GITHUB_URL` in your environment.
+
+### Exclude issues by label
+
+By default, GitHub issues labeled with "enhancement" will be excluded from the results. You can configure the tool with your own list of labels like this:
+
+```
+$ top-issues exlude-labels label1,label2
+```
 
 ## Run
 

@@ -27,7 +27,7 @@ function options(url, oauth) {
 
 function staleComment(issueCommentsUrl, olderThanDays, oauth, logger) {
   let opts = options(`${issueCommentsUrl}?per_page=1`, oauth);
-  logger.debug(`Requesting '${opts.url}'`);
+  logger.debug(`Requesting comments '${opts.url}'`);
 
   return request(opts)
     .then(res => {
@@ -48,15 +48,16 @@ function _getIssues(url, oauth, logger) {
   url.set('query', Object.assign({ per_page: 100 }, url.query));
 
   let opts = options(url.href, oauth);
-  logger.debug(`Requesting '${opts.url}'`);
+  logger.debug(`Requesting issues '${opts.url}'`);
 
   return request(opts)
     .then(res => {
       let links = parseLinks(res.headers.link);
       return Promise.all(_getIssues(links && links.next && links.next.url, oauth, logger).concat(
         res.body.map(issue => {
-          if (issue.labels.find(label => label.name == 'enhancement')) {
-            // ignore issues labeled 'enhancement'
+          let excludeLabels = pkg.config.excludeLabels || pkg.config.defaults.excludeLabels;
+          if (issue.labels.some(label => excludeLabels.some(exclude => exclude === label.name))) {
+            // ignore issues with labels found in config.excludeLabels
             return null;
           }
 
@@ -121,6 +122,16 @@ program
     pkg.config.url = args.url || null;
     return write(pkgPath, JSON.stringify(pkg, null, 2))
       .then(() => logger.info(`Saved URL '${pkg.config.url}'`));
+  });
+
+program
+  .command('exclude-labels', 'Save labels used to exclude GitHub issues from the results list')
+  .argument('<labels>', 'Comma-delimited list of GitHub issues labels', program.LIST)
+  .action((args, opts, logger) => {
+    let labels = args.labels || null;
+    pkg.config.excludeLabels = labels && labels.map(label => label.trim());
+    return write(pkgPath, JSON.stringify(pkg, null, 2))
+      .then(() => logger.info(`Saved labels '${pkg.config.excludeLabels}'`));
   });
 
 program
