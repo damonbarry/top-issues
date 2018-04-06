@@ -2,96 +2,16 @@
 
 'use strict';
 
-const parseLinks = require('parse-link-header');
+const filterIssues = require('./filter.js');
+const getIssues = require('./pages.js');
 const parseUrl = require('url-parse');
-const path = require('path');
 const program = require('caporal');
-const request = require('./request.js');
+const sortIssues = require('./sort.js');
 const write = require('fs-writefile-promise');
 const Table = require('cli-table2');
 
 const pkgPath = require.resolve('./package.json');
 let pkg = require('./package.json');
-
-function staleComment(issueCommentsUrl, olderThanDays, oauth, logger) {
-  const url = `${issueCommentsUrl}?per_page=1`;
-  logger.debug(`Requesting comments '${url}'`);
-
-  return request(url, oauth)
-    .then(res => {
-      if (!res.body.length) return null;
-
-      let comment = res.body[0];
-      let staleDate = new Date();
-      staleDate.setDate(staleDate.getDate() - olderThanDays);
-      let commentDate = new Date(comment.created_at);
-      return commentDate < staleDate ? comment : null;
-    });
-}
-
-function _getIssues(url, oauth, logger) {
-  if (!url) return [];
-
-  url = parseUrl(url, true);
-  url.set('query', Object.assign({ per_page: 100 }, url.query));
-
-  logger.debug(`Requesting issues '${url.href}'`);
-
-  return request(url.href, oauth)
-    .then(res => {
-      let links = parseLinks(res.headers.link);
-      return Promise.all(_getIssues(links && links.next && links.next.url, oauth, logger).concat(
-        res.body.map(issue => {
-          let excludeLabels = pkg.config.excludeLabels || pkg.config.defaults.excludeLabels;
-          if (issue.labels.some(label => excludeLabels.some(exclude => exclude === label.name))) {
-            // ignore issues with labels found in config.excludeLabels
-            return null;
-          }
-
-          if (!issue.comments) {
-            // keep issues no one has commented on yet
-            return { issue: issue, comment: null };
-          }
-
-          // keep issues no one has commented on in 10+ days
-          return staleComment(issue.comments_url, 10, oauth, logger)
-            .then(comment => comment ? { issue: issue, comment: comment } : null);
-        })
-      )).then(issues => issues.filter(issue => issue));
-    })
-}
-
-function getIssues(url, oauth, logger) {
-  url = parseUrl(url);
-  if (url.hostname.split('.').slice(-2).join('.') !== 'github.com') {
-    return Promise.reject('Unrecognized URL, expected github.com');
-  }
-  
-  let basename = url.pathname.replace(/\.git$/, '');
-  return _getIssues(`https://api.github.com/repos${basename}/issues`, oauth, logger)
-    .then(issues => {
-      const oneDay = 1000 * 60 * 60 * 24;
-
-      let processed = issues.map(elem => {
-        return {
-          number: elem.issue.number,
-          numComments: elem.issue.comments,
-          age: !elem.comment ? -1 : Math.round(Math.abs((new Date()).getTime() - (new Date(elem.comment.created_at)).getTime())/oneDay),
-          title: elem.issue.title
-        };
-      });
-
-      processed.sort((a, b) => {
-        if (a.age < 0 && b.age < 0) // if no comments, order by issue #, ascending
-          return a.number - b.number;
-        if (a.age < 0) return -1;   // order issues without comments...
-        if (b.age < 0) return +1;   // ...before issues with comments
-        return b.age - a.age;       // if both have comments, order by comment age, descending
-      });
-
-      return processed;
-    });
-}
 
 program
   .command('oauth', 'Save a token used to communicate with GitHub')
@@ -129,22 +49,37 @@ program
       return 1;
     }
 
-    const url = process.env.GITHUB_URL || pkg.config.url || pkg.config.defaults.url;
+    let url = process.env.GITHUB_URL || pkg.config.url || pkg.config.defaults.url;
+    url = parseUrl(url);
+    if (url.hostname.split('.').slice(-2).join('.') !== 'github.com') {
+      logger.error('Unrecognized URL, expected github.com');
+      return 1;
+    }
+    let basename = url.pathname.replace(/\.git$/, '');
+    url = `https://api.github.com/repos${basename}/issues`;
+  
+    let excludeLabels = pkg.config.excludeLabels || pkg.config.defaults.excludeLabels;
+
     return getIssues(url, oauth, logger)
       .then(issues => {
-        const table = new Table({
-          head: ['Issue', 'Comments', 'Age (days)', 'Title'],
-          colWidths: [,,,60]
-        });
-      
-        issues.forEach(issue =>
-          table.push([ issue.number, issue.numComments, issue.age === -1 ? '--' : `${issue.age}`, issue.title ]));
+        filterIssues(issues, excludeLabels, oauth, logger)
+          .then(filtered => {
+            let sorted = sortIssues(filtered);
 
-        console.log(`\n${url}\n`);
-        console.log(table.toString());
-        console.log(`\n${issues.length} issues`);
-      })
-      .catch(err => logger.error(err));
+            const table = new Table({
+              head: ['Issue', 'Comments', 'Age (days)', 'Title'],
+              colWidths: [,,,60]
+            });
+          
+            sorted.forEach(issue =>
+              table.push([ issue.number, issue.numComments, issue.age === -1 ? '--' : `${issue.age}`, issue.title ]));
+    
+            console.log(`\n${url}\n`);
+            console.log(table.toString());
+            console.log(`\n${sorted.length} issues`);
+          })
+          .catch(err => logger.error(err));
+      });
   });
 
 program.parse(process.argv);
