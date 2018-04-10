@@ -42,6 +42,7 @@ program
   });
 
 program
+  .version(pkg.version)
   .action((args, opts, logger) => {
     let oauth = process.env.GITHUB_TOKEN || pkg.config.oauth;
     if (!oauth) {
