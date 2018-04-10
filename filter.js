@@ -1,5 +1,7 @@
 'use strict';
 
+const parseLinks = require('parse-link-header');
+const parseUrl = require('url-parse');
 const Promise = require('bluebird');
 const request = require('./request.js');
 
@@ -22,12 +24,19 @@ function filterIssues(issues, excludeLabels, oauth, logger) {
 }
 
 function staleComment(issueCommentsUrl, olderThanDays, oauth, logger) {
-  const url = `${issueCommentsUrl}?per_page=100`;
-  logger.debug(`Requesting comments '${url}'`);
+  let url = parseUrl(issueCommentsUrl, true);
+  url.set('query', Object.assign({ per_page: 100 }, url.query));
+  logger.debug(`Requesting comments '${url.href}'`);
 
-  return request(url, oauth)
+  return request(url.href, oauth)
     .then(res => {
       if (!res.body.length) return null;
+
+      // if this isn't the last page of links then request it
+      let links = parseLinks(res.headers.link);
+      if (links && links.last && links.last.url) {
+        return staleComment(links.last.url, 10, oauth, logger);
+      }
 
       let comment = res.body[res.body.length - 1];
       let staleDate = new Date();
