@@ -3,7 +3,7 @@
 'use strict';
 
 const filterIssues = require('./filter.js');
-const getIssues = require('./pages.js');
+const getIssues = require('./issues.js');
 const parseUrl = require('url-parse');
 const program = require('caporal');
 const sortIssues = require('./sort.js');
