@@ -22,14 +22,14 @@ function filterIssues(issues, excludeLabels, oauth, logger) {
 }
 
 function staleComment(issueCommentsUrl, olderThanDays, oauth, logger) {
-  const url = `${issueCommentsUrl}?per_page=1`;
+  const url = `${issueCommentsUrl}?per_page=100`;
   logger.debug(`Requesting comments '${url}'`);
 
   return request(url, oauth)
     .then(res => {
       if (!res.body.length) return null;
 
-      let comment = res.body[0];
+      let comment = res.body[res.body.length - 1];
       let staleDate = new Date();
       staleDate.setDate(staleDate.getDate() - olderThanDays);
       let commentDate = new Date(comment.created_at);
